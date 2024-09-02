@@ -1,9 +1,7 @@
 import os
 import requests
 from PIL import Image
-
-# Imgur client ID (replace with EPS Fantasy upload URL if different)
-CLIENT_ID = 'defb3566c9ac626'
+from config import CLIENT_ID
 
 def resize_image(image, size=(1024, 1024)):
     """
