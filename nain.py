@@ -22,7 +22,7 @@ def compress_image(image, output_path, max_size_kb, quality=85):
     while os.path.getsize(output_path) > max_size_kb * 1024 and quality > 10:
         # Reduce the quality and save again
         quality -= 5
-        image.save(output_path, 'JPEG', quality=quality) hi
+        image.save(output_path, 'JPEG', quality=quality)
 
 def convert_and_process_images(source_dir, dest_dir, max_size_kb=500):
     if not os.path.exists(dest_dir):
