@@ -1,7 +1,7 @@
 import os
 import requests
 from PIL import Image
-from config import CLIENT_ID
+from config import CLIENT_ID, source_directory, destination_directory
 
 def resize_image(image, size=(1024, 1024)):
     """
@@ -75,10 +75,6 @@ def convert_and_process_images(source_dir, dest_dir, max_size_kb=500):
 
         except Exception as e:
             print(f"Failed to convert, compress, or upload {filename}: {e}")
-
-# Define source and destination directories
-source_directory = '/Users/samjohnson/Code/SourceXY'
-destination_directory = '/Users/samjohnson/Code/DestinationXY'
 
 # Call the conversion and processing function
 convert_and_process_images(source_directory, destination_directory)
