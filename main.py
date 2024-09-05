@@ -2,7 +2,7 @@ from flask import Flask, render_template, request
 import os
 import requests
 from PIL import Image
-import pyheif
+#import pyheif
 from config import CLIENT_ID
 
 app = Flask(__name__)
@@ -25,11 +25,13 @@ def upload_file():
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in allowed_extensions:
-        return render_template('result.html', image_url='Error, Unsupported File Type')
+        return render_template('result.html', display_message='Error, Unsupported File Type')
 
     try:
         # Handle .heic files
         if ext == '.heic':
+            return render_template('result.html', display_message='HEIC file suppoert under construction'), 500
+            '''
             heif_file = pyheif.read(file_path)
             img = Image.frombytes(
                 heif_file.mode,
@@ -39,6 +41,7 @@ def upload_file():
                 heif_file.mode,
                 heif_file.stride,
             )
+            '''
         else:
             # Open and process other image formats
             with Image.open(file_path) as img:
@@ -80,14 +83,14 @@ def upload_file():
             img_url = response.json()['data']['link']
             img_url = img_url.rsplit('.', 1)[0] + '.jpg'
             print(f"Uploaded {new_filename} to {img_url}")
-            return render_template('result.html', image_url=img_url)
+            return render_template('result.html', display_message=img_url)
         else:
             print(f"Failed to upload {new_filename}: {response.status_code} {response.text}")
-            return render_template('result.html', image_url='Failed to Upload Image'), 500
+            return render_template('result.html', display_message='Failed to Upload Image'), 500
 
     except Exception as e:
         print(f"Failed to process image {filename}: {e}")
-        return render_template('result.html', image_url='Error Processing Image'), 500
+        return render_template('result.html', display_message='Error Processing Image'), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

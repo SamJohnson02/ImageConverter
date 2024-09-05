@@ -9,8 +9,8 @@
 <body>
   <div id="main">
     <h1>Upload Result</h1>
-    {% if image_url %}
-      <p>{{ image_url }}</p>
+    {% if display_message %}
+      <p>{{ display_message }}</p>
     {% else %}
       <p>There was an error uploading the image.</p>
     {% endif %}
