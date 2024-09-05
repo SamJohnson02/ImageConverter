@@ -1,80 +1,108 @@
+from flask import Flask, render_template, request
 import os
 import requests
 from PIL import Image
-from config import CLIENT_ID, source_directory, destination_directory
+import pyheif
+from config import CLIENT_ID
 
-def resize_image(image, size=(1024, 1024)):
-    """
-    Resize the image to fit within the target size of 1024x1024 pixels.
-    """
-    image = image.resize(size, Image.LANCZOS)
-    return image
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads/'
 
-def compress_image(image, output_path, max_size_kb, quality=85):
-    """
-    Compress the image by reducing quality until it's under the max_size_kb.
-    """
-    image.save(output_path, 'JPEG', quality=quality)
-    
-    # Check the file size
-    while os.path.getsize(output_path) > max_size_kb * 1024 and quality > 10:
-        # Reduce the quality and save again
-        quality -= 5
-        image.save(output_path, 'JPEG', quality=quality)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-def convert_and_process_images(source_dir, dest_dir, max_size_kb=500):
-    if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    file = request.files['file']
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(file_path)
 
-    headers = {'Authorization': f'Client-ID {CLIENT_ID}'}
-    
     # Define allowed image extensions
-    allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.xml'}
-    
-    for filename in os.listdir(source_dir):
-        if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
-            # Skip non-image files
-            continue
-        
-        file_path = os.path.join(source_dir, filename)
-        try:
+    allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic'}
+
+    filename = os.path.basename(file_path)
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext not in allowed_extensions:
+        # Remove the uploaded file if unsupported
+        os.remove(file_path)
+        return "Unsupported file type", 400
+
+    try:
+        # Handle .heic files
+        if ext == '.heic':
+            heif_file = pyheif.read(file_path)
+            img = Image.frombytes(
+                heif_file.mode,
+                heif_file.size,
+                heif_file.data,
+                "raw",
+                heif_file.mode,
+                heif_file.stride,
+            )
+        else:
+            # Open and process other image formats
             with Image.open(file_path) as img:
-                # Resize the image to 1024x1024 pixels
-                img = resize_image(img)
-                
-                # Convert to RGB and save the image
                 img = img.convert('RGB')
-                
-                base_filename = os.path.splitext(filename)[0]
-                new_filename = base_filename + '.JPG'
-                new_file_path = os.path.join(dest_dir, new_filename)
+        
+        # Resize the image
+        img = img.resize((1024, 1024), Image.LANCZOS)
 
-                # Convert and compress the image
-                compress_image(img, new_file_path, max_size_kb)
-                
-                # Upload the image (adjust URL and headers if needed for EPS Fantasy)
-                with open(new_file_path, 'rb') as img_file:
-                    response = requests.post(
-                        "https://api.imgur.com/3/upload",  # Replace with EPS Fantasy upload URL
-                        headers=headers,
-                        files={'image': img_file}
-                    )
-                
-                # Check if the upload was successful
-                if response.status_code == 200:
-                    img_url = response.json()['data']['link']
-                    print(f"Uploaded {new_filename} to {img_url}")
-                else:
-                    print(f"Failed to upload {new_filename}: {response.status_code} {response.text}")
+        # Save the image with .jpg extension
+        base_filename = os.path.splitext(filename)[0]
+        new_filename = base_filename + '.jpg'
+        new_file_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
 
-                # Confirm that the file was saved
-                if os.path.exists(new_file_path):
-                    print(f"Saved {new_filename} to {new_file_path}")
-                else:
-                    print(f"Failed to save {new_filename}")
+        # Ensure the destination directory exists
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-        except Exception as e:
-            print(f"Failed to convert, compress, or upload {filename}: {e}")
+        # Compress and save the image
+        img.save(new_file_path, 'JPEG', quality=85)
+        max_size_kb = 500
+        quality = 85
+        while os.path.getsize(new_file_path) > max_size_kb * 1024:
+            # Reduce quality until under the size limit
+            quality -= 5
+            img.save(new_file_path, 'JPEG', quality=quality)
+            if quality <= 10:
+                break
 
-# Call the conversion and processing function
-convert_and_process_images(source_directory, destination_directory)
+        # Upload the image
+        headers = {'Authorization': f'Client-ID {CLIENT_ID}'}
+        with open(new_file_path, 'rb') as img_file:
+            response = requests.post(
+                "https://api.imgur.com/3/upload",
+                headers=headers,
+                files={'image': img_file}
+            )
+
+        # Check if the upload was successful
+        if response.status_code == 200:
+            img_url = response.json()['data']['link']
+            img_url = img_url.rsplit('.', 1)[0] + '.jpg'
+            print(f"Uploaded {new_filename} to {img_url}")
+
+            # Remove the files after upload
+            os.remove(file_path)
+            os.remove(new_file_path)
+
+            return render_template('result.html', image_url=img_url)
+        else:
+            print(f"Failed to upload {new_filename}: {response.status_code} {response.text}")
+            # Remove the files even if upload fails
+            os.remove(file_path)
+            if os.path.exists(new_file_path):
+                os.remove(new_file_path)
+            return "Failed to upload image", 500
+
+    except Exception as e:
+        print(f"Failed to process image {filename}: {e}")
+        # Remove the files in case of exception
+        os.remove(file_path)
+        if os.path.exists(new_file_path):
+            os.remove(new_file_path)
+        return "Error processing image", 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
