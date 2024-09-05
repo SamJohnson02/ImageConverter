@@ -1,4 +1,7 @@
 body {
   background-color: beige;
   font-family: 'Times New Roman', Times, serif;
+  max-width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }

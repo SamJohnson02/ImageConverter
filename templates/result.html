@@ -7,12 +7,14 @@
   <title>Upload Result</title>
 </head>
 <body>
-  <h1>Upload Result</h1>
-  {% if image_url %}
-    <p>{{ image_url }}</p>
-  {% else %}
-    <p>There was an error uploading the image.</p>
-  {% endif %}
-  <a href="/">Upload another image</a>
+  <div id="main">
+    <h1>Upload Result</h1>
+    {% if image_url %}
+      <p>{{ image_url }}</p>
+    {% else %}
+      <p>There was an error uploading the image.</p>
+    {% endif %}
+    <a href="/">Upload another image</a>
+  </div>
 </body>
 </html>

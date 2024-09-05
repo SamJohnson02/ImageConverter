@@ -25,9 +25,7 @@ def upload_file():
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in allowed_extensions:
-        # Remove the uploaded file if unsupported
-        os.remove(file_path)
-        return "Unsupported file type", 400
+        return render_template('result.html', image_url='Error, Unsupported File Type')
 
     try:
         # Handle .heic files
@@ -82,27 +80,14 @@ def upload_file():
             img_url = response.json()['data']['link']
             img_url = img_url.rsplit('.', 1)[0] + '.jpg'
             print(f"Uploaded {new_filename} to {img_url}")
-
-            # Remove the files after upload
-            os.remove(file_path)
-            os.remove(new_file_path)
-
             return render_template('result.html', image_url=img_url)
         else:
             print(f"Failed to upload {new_filename}: {response.status_code} {response.text}")
-            # Remove the files even if upload fails
-            os.remove(file_path)
-            if os.path.exists(new_file_path):
-                os.remove(new_file_path)
-            return "Failed to upload image", 500
+            return render_template('result.html', image_url='Failed to Upload Image'), 500
 
     except Exception as e:
         print(f"Failed to process image {filename}: {e}")
-        # Remove the files in case of exception
-        os.remove(file_path)
-        if os.path.exists(new_file_path):
-            os.remove(new_file_path)
-        return "Error processing image", 500
+        return render_template('result.html', image_url='Error Processing Image'), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
